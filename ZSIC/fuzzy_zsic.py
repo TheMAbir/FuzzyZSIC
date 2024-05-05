@@ -102,7 +102,7 @@ class FuzzyZeroShotImageClassification():
             if match_score > best_match_score:
                 best_match_score = match_score
                 best_match = label
-        return best_match, best_match_score
+        return best_match, best_match_score  
 
     def __call__(self, image: str, candidate_labels: Union[str, List[str]], *args, **kwargs):
         """
@@ -124,8 +124,10 @@ class FuzzyZeroShotImageClassification():
         Return:
             A `dict` or a list of `dict`: Each result comes as a dictionary with the following keys:
             - **image** (`str`) -- The image for which this is the output.
-            - **labels** (`List[str]`) -- The labels sorted by order of likelihood.
             - **scores** (`List[float]`) -- The probabilities for each of the labels.
+            - **fuzzy_matched_labels** (`List[str]`) -- Fuzzy matched labels.
+            - **highest_fuzzy_label** (`str`) -- The label with the highest fuzzy score.
+            - **highest_score** (`float`) -- The highest score among the predicted labels.
         """
 
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -180,13 +182,20 @@ class FuzzyZeroShotImageClassification():
             fuzzy_matched_label, _ = self.fuzzy_match(candidate_label, labels)
             fuzzy_matched_labels.append(fuzzy_matched_label)
 
-        # Reorder scores and labels based on fuzzy matching
-        sorted_sl = sorted(zip(scores, candidate_labels, fuzzy_matched_labels), key=lambda t: t[0], reverse=True)
-        scores, candidate_labels, fuzzy_matched_labels = zip(*sorted_sl)
+        # Find the index of the label with the highest score
+        max_score_index = scores.index(max(scores))
+
+        # Get the label with the highest fuzzy score
+        highest_fuzzy_label = fuzzy_matched_labels[max_score_index]
+
+        # Get the corresponding score
+        highest_score = max(scores)
 
         preds = {}
         preds["image"] = image
         preds["scores"] = scores
-        preds["labels"] = candidate_labels
         preds["fuzzy_matched_labels"] = fuzzy_matched_labels
+        preds["highest_fuzzy_label"] = highest_fuzzy_label
+        preds["highest_score"] = highest_score
+
         return preds
