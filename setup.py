@@ -10,6 +10,7 @@ setuptools.setup(
     version="1.0",
     author="Abir",
     description="Fuzzy Zeroshot Image Classification",
+    url="https://github.com/TheMAbir/FuzzyZSIC",
     packages=setuptools.find_packages(),
     install_requires=[
         "torch",
@@ -22,7 +23,7 @@ setuptools.setup(
         "python-Levenshtein"
     ],
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
