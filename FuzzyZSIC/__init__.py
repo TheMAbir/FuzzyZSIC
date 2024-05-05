@@ -1,1 +1,0 @@
-from FuzzyZSIC.fuzzy_zsic import FuzzyZeroShotImageClassification
