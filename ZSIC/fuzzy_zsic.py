@@ -94,15 +94,30 @@ class FuzzyZeroShotImageClassification():
         image = image.convert("RGB")
         return image
 
-    def fuzzy_match(self, candidate_label, labels):
+    def fuzzy_match(self, candidate_label, labels, threshold=80):
+        """
+        Performs fuzzy matching with a confidence threshold.
+
+        Args:
+            candidate_label (`str`): The candidate label to match.
+            labels (`List[str]`): The list of labels to compare with.
+            threshold (`int`, *optional*, defaults to 80):
+                The minimum fuzzy matching score (out of 100) to consider a match.
+
+        Returns:
+            A tuple containing:
+                - best_match (`str`): The label with the highest fuzzy score that meets the threshold.
+                - best_match_score (`int`): The fuzzy score of the best match (0-100).
+        """
+
         best_match_score = 0
         best_match = None
         for label in labels:
             match_score = fuzz.partial_ratio(candidate_label, label)
-            if match_score > best_match_score:
+            if match_score > best_match_score and match_score >= threshold:
                 best_match_score = match_score
                 best_match = label
-        return best_match, best_match_score  
+        return best_match, best_match_score
 
     def __call__(self, image: str, candidate_labels: Union[str, List[str]], *args, **kwargs):
         """
@@ -176,26 +191,32 @@ class FuzzyZeroShotImageClassification():
         probs = probs.softmax(dim=-1).cpu().numpy()
         scores = list(probs.flatten())
 
-        # Fuzzy matching
+        # Fuzzy matching with threshold
         fuzzy_matched_labels = []
+        highest_fuzzy_score = 0
+        highest_fuzzy_label = None
         for candidate_label in candidate_labels:
-            fuzzy_matched_label, _ = self.fuzzy_match(candidate_label, labels)
+            fuzzy_matched_label, match_score = self.fuzzy_match(candidate_label, labels)
             fuzzy_matched_labels.append(fuzzy_matched_label)
+            if match_score > highest_fuzzy_score:
+                highest_fuzzy_score = match_score
+                highest_fuzzy_label = fuzzy_matched_label
 
-        # Find the index of the label with the highest score
-        max_score_index = scores.index(max(scores))
+        # Handling potential false positives
+        # 1. Confidence score threshold:
+        if highest_fuzzy_score < 90:
+            highest_fuzzy_label = None
 
-        # Get the label with the highest fuzzy score
-        highest_fuzzy_label = fuzzy_matched_labels[max_score_index]
-
-        # Get the corresponding score
-        highest_score = max(scores)
+        # 2. Combining with CLIP classification (consider this approach):
+        # It can be implemented a custom logic here based on needs.
+        # For example, if the highest_fuzzy_label is not among the top-k CLIP predictions,
+        # consider it less reliable and prioritize the CLIP results.
 
         preds = {}
         preds["image"] = image
         preds["scores"] = scores
         preds["fuzzy_matched_labels"] = fuzzy_matched_labels
         preds["highest_fuzzy_label"] = highest_fuzzy_label
-        preds["highest_score"] = highest_score
+        preds["highest_score"] = max(scores)
 
         return preds
