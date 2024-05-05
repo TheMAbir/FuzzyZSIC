@@ -11,90 +11,92 @@ from fuzzywuzzy import fuzz
 
 class FuzzyZeroShotImageClassification():
 
-    def __init__(self,
-                 *args,
-                 **kwargs):
-        """
-        Load CLIP models based on either language needs or vision backbone needs
-        With english labelling users have the liberty to choose different vision backbones
-        Multi-lingual labelling is only supported with ViT as vision backbone.
+def __init__(self, 
+               *args, 
+               **kwargs):
+    
+         """
+          Load CLIP models based on either language needs or vision backbone needs
+          With english labelling users have the liberty to choose different vision backbones
+          Multi-lingual labelling is only supported with ViT as vision backbone.
 
-        Args:
-            Model (`str`, *optional*, defaults to `ViT-B/32`):
-              Any one of the CNN or Transformer based pretrained models can be used as Vision backbone.
-              `RN50`, `RN101`, `RN50x4`, `RN50x16`, `RN50x64`, `ViT-B/32`, `ViT-B/16`, `ViT-L/14`
-            Lang (`str`, *optional*, defaults to `en`):
-              Any one of the language codes below
-              ar, bg, ca, cs, da, de, el, es, et, fa, fi, fr, fr-ca, gl, gu, he, hi, hr, hu,
-              hy, id, it, ja, ka, ko, ku, lt, lv, mk, mn, mr, ms, my, nb, nl, pl, pt, pt, pt-br,
-              ro, ru, sk, sl, sq, sr, sv, th, tr, uk, ur, vi, zh-cn, zh-tw.
-        """
-
-        if "lang" in kwargs:
+          Args:
+              Model (`str`, *optional*, defaults to `ViT-B/32`):
+                Any one of the CNN or Transformer based pretrained models can be used as Vision backbone. 
+                `RN50`, `RN101`, `RN50x4`, `RN50x16`, `RN50x64`, `ViT-B/32`, `ViT-B/16`, `ViT-L/14`
+              Lang (`str`, *optional*, defaults to `en`):
+                Any one of the language codes below
+                ar, bg, ca, cs, da, de, el, es, et, fa, fi, fr, fr-ca, gl, gu, he, hi, hr, hu, 
+                hy, id, it, ja, ka, ko, ku, lt, lv, mk, mn, mr, ms, my, nb, nl, pl, pt, pt, pt-br, 
+                ro, ru, sk, sl, sq, sr, sv, th, tr, uk, ur, vi, zh-cn, zh-tw.   
+         """
+    
+         if "lang" in kwargs:
             self.lang = kwargs["lang"]
-        else:
+         else:
             self.lang = "en"
 
-        lang_codes = self.available_languages()
+         lang_codes = self.available_languages()
 
-        if self.lang not in lang_codes:
+         if self.lang not in lang_codes:
             raise Exception('Language code {} not valid, supported codes are {} '.format(self.lang, lang_codes))
-            return
+            return 
 
-        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+         device = "cuda:0" if torch.cuda.is_available() else "cpu" 
 
-        if self.lang == "en":
+         if self.lang == "en":
             model_tag = "ViT-B/32"
             if "model" in kwargs:
-                model_tag = kwargs["model"]
-            print("Loading OpenAI CLIP model {} ...".format(model_tag))
-            self.model, self.preprocess = clip.load(model_tag, device=device)
+                model_tag = kwargs["model"] 
+            print("Loading OpenAI CLIP model {} ...".format(model_tag))    
+            self.model, self.preprocess = clip.load(model_tag, device=device) 
             print("Label language {} ...".format(self.lang))
-        else:
+         else:          
             model_tag = "clip-ViT-B-32"
             print("Loading sentence transformer model {} ...".format(model_tag))
             self.model = SentenceTransformer('clip-ViT-B-32', device=device)
             self.text_model = SentenceTransformer('sentence-transformers/clip-ViT-B-32-multilingual-v1', device=device)
             print("Label language {} ...".format(self.lang))
 
-    def available_models(self):
-        """Returns the names of available CLIP models"""
-        return clip.available_models()
+  def available_models(self):
+      """Returns the names of available CLIP models"""
+      return clip.available_models()
 
-    def available_languages(self):
-        """Returns the codes of available languages"""
-        codes = """ar, bg, ca, cs, da, de, en, el, es, et, fa, fi, fr, fr-ca, gl, gu, he, hi, hr, hu,
-        hy, id, it, ja, ka, ko, ku, lt, lv, mk, mn, mr, ms, my, nb, nl, pl, pt, pt, pt-br,
-        ro, ru, sk, sl, sq, sr, sv, th, tr, uk, ur, vi, zh-cn, zh-tw"""
-        return set([code.strip() for code in codes.split(",")])
+  def available_languages(self):
+      """Returns the codes of available languages"""
+      codes = """ar, bg, ca, cs, da, de, en, el, es, et, fa, fi, fr, fr-ca, gl, gu, he, hi, hr, hu, 
+      hy, id, it, ja, ka, ko, ku, lt, lv, mk, mn, mr, ms, my, nb, nl, pl, pt, pt, pt-br, 
+      ro, ru, sk, sl, sq, sr, sv, th, tr, uk, ur, vi, zh-cn, zh-tw"""
+      return set([code.strip() for code in codes.split(",")])
 
-    def _load_image(self, image: str) -> "PIL.Image.Image":
-        """
-        Loads `image` to a PIL Image.
-        Args:
-            image (`str` ):
-                The image to convert to the PIL Image format.
-        Returns:
-            `PIL.Image.Image`: A PIL Image.
-        """
-        if isinstance(image, str):
-            if image.startswith("http://") or image.startswith("https://"):
-                image = PIL.Image.open(requests.get(image, stream=True).raw)
-            elif os.path.isfile(image):
-                image = PIL.Image.open(image)
-            else:
-                raise ValueError(
-                    f"Incorrect path or url, URLs must start with `http://` or `https://`, and {image} is not a valid path"
-                )
-        elif isinstance(image, PIL.Image.Image):
-            image = image
-        else:
-            raise ValueError(
-                "Incorrect format used for image. Should be an url linking to an image, a local path, or a PIL image."
-            )
-        image = PIL.ImageOps.exif_transpose(image)
-        image = image.convert("RGB")
-        return image
+
+  def _load_image(self, image: str) -> "PIL.Image.Image":
+      """
+      Loads `image` to a PIL Image.
+      Args:
+          image (`str` ):
+              The image to convert to the PIL Image format.
+      Returns:
+          `PIL.Image.Image`: A PIL Image.
+      """
+      if isinstance(image, str):
+          if image.startswith("http://") or image.startswith("https://"):
+              image = PIL.Image.open(requests.get(image, stream=True).raw)
+          elif os.path.isfile(image):
+              image = PIL.Image.open(image)
+          else:
+              raise ValueError(
+                  f"Incorrect path or url, URLs must start with `http://` or `https://`, and {image} is not a valid path"
+              )
+      elif isinstance(image, PIL.Image.Image):
+          image = image
+      else:
+          raise ValueError(
+              "Incorrect format used for image. Should be an url linking to an image, a local path, or a PIL image."
+          )
+      image = PIL.ImageOps.exif_transpose(image)
+      image = image.convert("RGB")
+      return image            
 
     def fuzzy_match(self, candidate_label, labels):
         best_match_score = 0
